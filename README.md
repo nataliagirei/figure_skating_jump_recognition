@@ -1,7 +1,8 @@
 # Figure Skating Jump Recognition
 
-Classifies figure skating jumps (salchow, axel, toe loop) from short video clips.  
-A research project exploring what accuracy is achievable on a small dataset (~305 videos) using frozen pretrained backbones, pose estimation, optical flow, and ensemble feature engineering.
+Classifies figure skating jumps (salchow, axel, toe loop) from short video clips.
+
+This is a deliberately difficult small-data research problem: the discriminative visual cue between two of the three classes (salchow vs. toe loop) is the blade edge at takeoff — a sub-10-pixel region at 224×224 resolution that no global feature representation can reliably capture. The goal is not to maximise accuracy, but to systematically understand *why* accuracy is limited and what architectural choices matter within those constraints.
 
 ---
 
