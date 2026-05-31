@@ -41,8 +41,6 @@ ai_training/checkpoints/
 # ── TensorBoard logs ──────────────────────────────────────────────────────────
 ai_training/runs/
 
-# ── Generated report figures ──────────────────────────────────────────────────
-reports/figures/
 
 # ── Generated PDF ─────────────────────────────────────────────────────────────
 EXPERIMENTS.pdf
