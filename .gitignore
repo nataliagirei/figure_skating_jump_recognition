@@ -1,0 +1,68 @@
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Python cache ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ── IDE ────────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+
+# ── Raw video data ─────────────────────────────────────────────────────────────
+data/Axel/
+data/Salchow/
+data/Toe Loop/
+data/Failed/
+data/preprocessed/
+
+# ── Pre-extracted frames (frame .npy arrays, ~GB total) ────────────────────────
+data/frames/
+!data/frames/dataset_metadata_train.json
+!data/frames/dataset_metadata_val.json
+!data/frames/dataset_metadata_test.json
+
+# ── Feature vectors and pose sequences ────────────────────────────────────────
+data/features/
+data/features_flow/
+data/features_local/
+data/poses/
+
+# ── Model checkpoints ─────────────────────────────────────────────────────────
+ai_training/checkpoints/*.pth
+ai_training/checkpoints/
+
+# ── TensorBoard logs ──────────────────────────────────────────────────────────
+ai_training/runs/
+
+# ── Generated report figures ──────────────────────────────────────────────────
+reports/figures/
+
+# ── Generated PDF ─────────────────────────────────────────────────────────────
+EXPERIMENTS.pdf
+*.pdf
+
+# ── Interview prep (personal document, not for public repo) ───────────────────
+INTERVIEW_QA.md
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Pipenv lockfile (prefer requirements.txt) ─────────────────────────────────
+Pipfile.lock
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── MediaPipe model cache ─────────────────────────────────────────────────────
+*.task
+pose_landmarker*.task
