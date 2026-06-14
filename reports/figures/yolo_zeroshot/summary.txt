@@ -1,0 +1,20 @@
+YOLO zero-shot diagnostic summary
+Model: yolo11n.pt  |  conf_thresh=0.25  |  foot_frac=0.3
+N_SAMPLES=5 per class
+
+Class        n     detected    det_rate   avg_conf  avg_person_bbox  avg_blade_crop
+------------------------------------------------------------------------------
+salchow      5     5            100.0%      0.690           0.165           0.050
+axel         5     5            100.0%      0.798           0.226           0.068
+toe_loop     5     5            100.0%      0.721           0.127           0.039
+
+Interpretation guide:
+  det_rate   — % of sampled frames where a person was found (aim >80%)
+  avg_conf   — YOLO confidence for the person detection
+  avg_person_bbox — fraction of frame area covered by person bbox
+  avg_blade_crop  — fraction of frame area in the YOLO blade crop
+                    (vs heuristic: bottom-50% = 0.500 of the frame)
+
+If det_rate < 60%: YOLO struggles with this footage; fine-tuning needed.
+If avg_blade_crop << 0.10: crop is tight (good — less background noise).
+If avg_blade_crop > 0.20: person bbox is small; crop may still include ice.
