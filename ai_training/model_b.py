@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision.models.video import r3d_18, R3D_18_Weights
 
-NUM_ROTATIONS = 4   # 0=unknown, 1=single, 2=double, 3=triple
+NUM_ROTATIONS = 3   # single / double / triple (raw labels 1,2,3 → remapped 0,1,2 at train time)
 
 
 class FigureSkatingModelB(nn.Module):

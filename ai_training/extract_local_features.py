@@ -16,7 +16,12 @@ Crop:
   - Features averaged across the 4 frames → 512-d output.
 
 Output: data/features_local/{stem}.npy  shape (512,)
+
+Flags:
+  --bottom   Read from data/frames_bottom/ → write to data/features_local_bottom/
+             Run extract_bottom_frames.py first to generate bottom-cropped frames.
 """
+import argparse
 import json
 from pathlib import Path
 
@@ -27,19 +32,29 @@ import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
 from tqdm import tqdm
 
-ROOT      = Path(__file__).resolve().parent.parent
-LOCAL_DIR = ROOT / "data" / "features_local"
+ROOT = Path(__file__).resolve().parent.parent
+
+def _parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument("--bottom", action="store_true",
+                   help="Use bottom-cropped frames (data/frames_bottom/) as input")
+    return p.parse_args()
+
+_args     = _parse_args()
+_variant  = "frames_bottom" if _args.bottom else "frames"
+_out_name = "features_local_bottom" if _args.bottom else "features_local"
+
+LOCAL_DIR = ROOT / "data" / _out_name
 FLOW_DIR  = ROOT / "data" / "features_flow"
 METAS     = [
-    ROOT / "data" / "frames" / "dataset_metadata_train.json",
-    ROOT / "data" / "frames" / "dataset_metadata_val.json",
-    ROOT / "data" / "frames" / "dataset_metadata_test.json",
+    ROOT / "data" / _variant / "dataset_metadata_train.json",
+    ROOT / "data" / _variant / "dataset_metadata_val.json",
+    ROOT / "data" / _variant / "dataset_metadata_test.json",
 ]
 
 DEVICE         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 CROP_START_REL = 0.50   # crop bottom 50% (hips → feet)
 N_WINDOW       = 4      # frames around takeoff to use
-FALLBACK_FRAMES = list(range(5))  # first 5 frames if flow unavailable
 
 
 def build_backbone() -> nn.Module:

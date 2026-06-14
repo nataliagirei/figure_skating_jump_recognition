@@ -80,8 +80,9 @@ criterion = nn.CrossEntropyLoss(weight=class_weights)
 optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-3)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
-history    = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+history    = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": [], "val_rot_acc": []}
 best_val_acc      = 0.0
+best_val_rot_acc  = 0.0
 epochs_no_improve = 0
 
 # ── Training loop ──────────────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad()
         type_logits, rot_logits = model(poses)
         loss = criterion(type_logits, type_labels) + \
-               ROTATION_LOSS_WEIGHT * nn.functional.cross_entropy(rot_logits, rot_labels)
+               ROTATION_LOSS_WEIGHT * nn.functional.cross_entropy(rot_logits, rot_labels - 1)
         loss.backward()
         optimizer.step()
 
@@ -112,7 +113,7 @@ for epoch in range(EPOCHS):
     print(f"Epoch [{epoch+1:2d}/{EPOCHS}] Train Loss: {train_loss:.4f}  Train Acc: {train_acc:.4f}")
 
     model.eval()
-    val_loss = val_correct = val_total = 0
+    val_loss = val_correct = val_total = rot_correct = rot_total = 0
 
     with torch.no_grad():
         for poses, type_labels, rot_labels in val_loader:
@@ -121,33 +122,48 @@ for epoch in range(EPOCHS):
             )
             type_logits, rot_logits = model(poses)
             loss = criterion(type_logits, type_labels) + \
-                   ROTATION_LOSS_WEIGHT * nn.functional.cross_entropy(rot_logits, rot_labels)
+                   ROTATION_LOSS_WEIGHT * nn.functional.cross_entropy(rot_logits, rot_labels - 1)
             val_loss    += loss.item() * type_labels.size(0)
             _, pred      = torch.max(type_logits, 1)
             val_correct += (pred == type_labels).sum().item()
             val_total   += type_labels.size(0)
+            rot_mask = rot_labels > 0
+            if rot_mask.any():
+                _, rot_pred  = torch.max(rot_logits[rot_mask], 1)
+                rot_correct += (rot_pred == rot_labels[rot_mask] - 1).sum().item()
+                rot_total   += rot_mask.sum().item()
 
     val_loss /= val_total
-    val_acc   = val_correct / val_total
+    val_acc      = val_correct / val_total
+    val_rot_acc  = rot_correct / rot_total if rot_total > 0 else 0.0
     history["val_loss"].append(val_loss)
     history["val_acc"].append(val_acc)
+    history["val_rot_acc"].append(val_rot_acc)
     save_training_curves(history, REPORT_DIR / "training_curves.png", "Pose LSTM")
-    print(f"Epoch [{epoch+1:2d}/{EPOCHS}] Val   Loss: {val_loss:.4f}  Val   Acc: {val_acc:.4f}")
+    print(f"Epoch [{epoch+1:2d}/{EPOCHS}] Val Loss: {val_loss:.4f}  "
+          f"Type Acc: {val_acc:.4f}  Rot Acc: {val_rot_acc:.4f}")
 
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         epochs_no_improve = 0
         torch.save(model.state_dict(), CKPT_DIR / "best_pose_model.pth")
-        print(f"  Best model saved (val_acc={val_acc:.4f})")
+        print(f"  Best type model saved  (val_acc={val_acc:.4f})")
     else:
         epochs_no_improve += 1
+
+    if val_rot_acc > best_val_rot_acc:
+        best_val_rot_acc = val_rot_acc
+        torch.save(model.state_dict(), CKPT_DIR / "best_pose_model_rotation.pth")
+        print(f"  Best rotation model saved (val_rot_acc={val_rot_acc:.4f})")
 
     if epochs_no_improve >= PATIENCE:
         print("Early stopping triggered")
         break
 
 save_history(history, CKPT_DIR / "history_pose.json")
-print(f"\nTraining Pose LSTM complete. Best val acc: {best_val_acc:.4f}")
+print(f"\nTraining Pose LSTM complete.")
+print(f"  Best type acc:     {best_val_acc:.4f}  -> best_pose_model.pth")
+print(f"  Best rotation acc: {best_val_rot_acc:.4f}  -> best_pose_model_rotation.pth")
 
 # ── Confusion matrix on val set ────────────────────────────────────────────────
 model.load_state_dict(torch.load(CKPT_DIR / "best_pose_model.pth", map_location=DEVICE, weights_only=True))
@@ -164,4 +180,19 @@ with torch.no_grad():
 
 save_confusion_matrix(y_true, y_pred, LABEL_NAMES, REPORT_DIR / "confusion_matrix.png",
                       "Exp 3: Pose LSTM")
-print("Confusion matrix saved.")
+print("Type confusion matrix saved.")
+
+r_true, r_pred = [], []
+with torch.no_grad():
+    for poses, type_labels, rot_labels in val_loader:
+        poses, rot_labels = poses.to(DEVICE), rot_labels.to(DEVICE)
+        _, rot_logits = model(poses)
+        rot_mask = rot_labels > 0
+        if rot_mask.any():
+            _, pred = torch.max(rot_logits[rot_mask], 1)
+            r_true.extend((rot_labels[rot_mask] - 1).tolist())  # {1,2,3} → {0,1,2}
+            r_pred.extend(pred.cpu().tolist())
+save_confusion_matrix(r_true, r_pred, ["single", "double", "triple"],
+                      REPORT_DIR / "confusion_matrix_rotation.png",
+                      "Exp 3: Rotation (1x/2x/3x)", labels=[0, 1, 2])
+print("Rotation confusion matrix saved.")

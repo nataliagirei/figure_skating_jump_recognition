@@ -5,7 +5,7 @@ from torchvision.models import resnet18, ResNet18_Weights
 # jump_type:  0=salchow, 1=axel, 2=toe_loop  (failed excluded)
 # rotation:   0=unknown, 1=single, 2=double, 3=triple
 NUM_JUMP_TYPES = 3
-NUM_ROTATIONS  = 4
+NUM_ROTATIONS  = 3   # single / double / triple (raw labels 1,2,3 → remapped 0,1,2 at train time)
 
 
 class FigureSkatingModel(nn.Module):
@@ -38,7 +38,7 @@ class FigureSkatingModel(nn.Module):
         self.dropout   = nn.Dropout(dropout_prob)
 
         self.head_type     = nn.Linear(128, NUM_JUMP_TYPES)
-        self.head_rotation = nn.Linear(128, NUM_ROTATIONS)  # 4-class: unknown/single/double/triple
+        self.head_rotation = nn.Linear(128, NUM_ROTATIONS)  # single / double / triple
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size, frames, C, H, W = x.shape

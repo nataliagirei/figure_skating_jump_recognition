@@ -14,13 +14,15 @@ def save_training_curves(history: dict, out_path: Path, title: str = "") -> None
 
     ax_l.plot(ep, history["train_loss"], label="train")
     ax_l.plot(ep, history["val_loss"],   label="val")
-    ax_l.set_title(f"Loss{' — ' + title if title else ''}")
+    ax_l.set_title(f"Loss - {title}" if title else "Loss")
     ax_l.set_xlabel("Epoch")
     ax_l.legend(); ax_l.grid(True)
 
-    ax_a.plot(ep, history["train_acc"], label="train")
-    ax_a.plot(ep, history["val_acc"],   label="val")
-    ax_a.set_title(f"Accuracy{' — ' + title if title else ''}")
+    ax_a.plot(ep, history["train_acc"], label="train type")
+    ax_a.plot(ep, history["val_acc"],   label="val type")
+    if history.get("val_rot_acc"):
+        ax_a.plot(ep, history["val_rot_acc"], label="val rotation", linestyle="--")
+    ax_a.set_title(f"Accuracy - {title}" if title else "Accuracy")
     ax_a.set_xlabel("Epoch")
     ax_a.set_ylim(0, 1)
     ax_a.legend(); ax_a.grid(True)
@@ -32,9 +34,12 @@ def save_training_curves(history: dict, out_path: Path, title: str = "") -> None
 
 
 def save_confusion_matrix(
-    y_true: list, y_pred: list, label_names: list[str], out_path: Path, title: str = ""
+    y_true: list, y_pred: list, label_names: list[str], out_path: Path, title: str = "",
+    labels: list[int] | None = None,
 ) -> None:
-    cm = confusion_matrix(y_true, y_pred, labels=list(range(len(label_names))))
+    if labels is None:
+        labels = list(range(len(label_names)))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
     fig, ax = plt.subplots(figsize=(6, 5))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
     disp.plot(ax=ax, colorbar=False, cmap="Blues")

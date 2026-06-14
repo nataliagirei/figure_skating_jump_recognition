@@ -39,7 +39,7 @@ SKIP_TYPES = {"failed"}
 
 def _ensure_model() -> str:
     if not MODEL_PATH.exists():
-        print(f"Downloading pose model → {MODEL_PATH} ...")
+        print(f"Downloading pose model -> {MODEL_PATH} ...")
         urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
         print("Download complete.")
     return str(MODEL_PATH)
@@ -171,7 +171,7 @@ def main() -> None:
     if failed:
         print(f"Missing video files ({len(failed)}): {failed[:5]}")
     if low_detect:
-        print(f"Low detection rate ({len(low_detect)} videos) — pose may be unreliable:")
+        print(f"Low detection rate ({len(low_detect)} videos) - pose may be unreliable:")
         for s in low_detect[:10]:
             print(f"  {s}")
 

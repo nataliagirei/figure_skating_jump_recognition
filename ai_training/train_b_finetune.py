@@ -95,7 +95,7 @@ optimizer = torch.optim.Adam([
 
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
-history    = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+history    = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": [], "val_rot_acc": []}
 best_val_acc      = 0.0
 epochs_no_improve = 0
 
@@ -112,7 +112,7 @@ for epoch in range(EPOCHS):
         type_logits, rot_logits = model(videos)
         loss_type = criterion_type(type_logits, type_labels)
         rot_mask  = rot_labels > 0
-        loss_rot  = criterion_rot(rot_logits[rot_mask], rot_labels[rot_mask]) if rot_mask.any() \
+        loss_rot  = criterion_rot(rot_logits[rot_mask], rot_labels[rot_mask] - 1) if rot_mask.any() \
                     else torch.tensor(0.0, device=DEVICE)
         loss = loss_type + ROTATION_LOSS_WEIGHT * loss_rot
         loss.backward()
@@ -130,7 +130,7 @@ for epoch in range(EPOCHS):
     print(f"Epoch [{epoch+1}/{EPOCHS}] Train Loss: {train_loss:.4f}  Train Acc: {train_acc:.4f}")
 
     model.eval()
-    val_loss = val_correct = val_total = 0
+    val_loss = val_correct = val_total = rot_correct = rot_total = 0
 
     with torch.no_grad():
         for videos, type_labels, rot_labels in val_loader:
@@ -140,19 +140,26 @@ for epoch in range(EPOCHS):
             type_logits, rot_logits = model(videos)
             loss_type = criterion_type(type_logits, type_labels)
             rot_mask  = rot_labels > 0
-            loss_rot  = criterion_rot(rot_logits[rot_mask], rot_labels[rot_mask]) if rot_mask.any() \
+            loss_rot  = criterion_rot(rot_logits[rot_mask], rot_labels[rot_mask] - 1) if rot_mask.any() \
                         else torch.tensor(0.0, device=DEVICE)
             val_loss    += (loss_type + ROTATION_LOSS_WEIGHT * loss_rot).item() * type_labels.size(0)
             _, pred      = torch.max(type_logits, 1)
             val_correct += (pred == type_labels).sum().item()
             val_total   += type_labels.size(0)
+            if rot_mask.any():
+                _, rot_pred  = torch.max(rot_logits[rot_mask], 1)
+                rot_correct += (rot_pred == rot_labels[rot_mask] - 1).sum().item()
+                rot_total   += rot_mask.sum().item()
 
     val_loss /= val_total
-    val_acc   = val_correct / val_total
+    val_acc      = val_correct / val_total
+    val_rot_acc  = rot_correct / rot_total if rot_total > 0 else 0.0
     history["val_loss"].append(val_loss)
     history["val_acc"].append(val_acc)
+    history["val_rot_acc"].append(val_rot_acc)
     save_training_curves(history, REPORT_DIR / "training_curves.png", "R3D-18 Full Fine-tuning")
-    print(f"Epoch [{epoch+1}/{EPOCHS}] Val   Loss: {val_loss:.4f}  Val   Acc: {val_acc:.4f}")
+    print(f"Epoch [{epoch+1}/{EPOCHS}] Val Loss: {val_loss:.4f}  "
+          f"Type Acc: {val_acc:.4f}  Rot Acc: {val_rot_acc:.4f}")
 
     if val_acc > best_val_acc:
         best_val_acc = val_acc
@@ -184,4 +191,19 @@ with torch.no_grad():
 
 save_confusion_matrix(y_true, y_pred, LABEL_NAMES, REPORT_DIR / "confusion_matrix.png",
                       "Exp 4: R3D-18 Full Fine-tuning")
-print("Confusion matrix saved.")
+print("Type confusion matrix saved.")
+
+r_true, r_pred = [], []
+with torch.no_grad():
+    for videos, type_labels, rot_labels in val_loader:
+        videos, rot_labels = videos.to(DEVICE), rot_labels.to(DEVICE)
+        _, rot_logits = model(videos)
+        rot_mask = rot_labels > 0
+        if rot_mask.any():
+            _, pred = torch.max(rot_logits[rot_mask], 1)
+            r_true.extend((rot_labels[rot_mask] - 1).tolist())  # {1,2,3} → {0,1,2}
+            r_pred.extend(pred.cpu().tolist())
+save_confusion_matrix(r_true, r_pred, ["single", "double", "triple"],
+                      REPORT_DIR / "confusion_matrix_rotation.png",
+                      "Exp 4: Rotation (1x/2x/3x)", labels=[0, 1, 2])
+print("Rotation confusion matrix saved.")

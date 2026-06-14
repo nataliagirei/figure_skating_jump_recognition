@@ -5,7 +5,7 @@ from torchvision.models import resnet18, ResNet18_Weights
 # jump_type:  0=salchow, 1=axel, 2=toe_loop, 3=failed
 # rotation:   0=unknown, 1=single, 2=double, 3=triple
 NUM_JUMP_TYPES = 4
-NUM_ROTATIONS = 4
+NUM_ROTATIONS  = 3   # single / double / triple (raw labels 1,2,3 → remapped 0,1,2 at train time)
 
 
 class FigureSkatingModelA(nn.Module):
